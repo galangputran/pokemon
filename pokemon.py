@@ -77,6 +77,6 @@ else:
                 </div>
             """, unsafe_allow_html=True)
             
-            st.confetti()
+            st.balloons()
         else:
             st.warning("Belum ada data lari di akun Strava kamu nih. Yuk lari dulu!")
