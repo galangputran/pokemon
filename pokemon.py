@@ -68,6 +68,7 @@ else:
                 pkmn, color, emoji = "Slowpoke", "#FDA4AF", "🌸"
                 desc = "Chill abis. Kamu lari buat nikmatin vibes, bukan buat dikejar target. Yang penting gerak dan tetep slay!"
 
+           # ... kode sebelumnya ...
             st.markdown(f"""
                 <div class="card">
                     <h2 style='color:{color};'>You are {pkmn}! {emoji}</h2>
@@ -77,6 +78,6 @@ else:
                 </div>
             """, unsafe_allow_html=True)
             
-            st.balloons()
+            st.balloons() # <--- Ganti ini dari st.confetti()
         else:
             st.warning("Belum ada data lari di akun Strava kamu nih. Yuk lari dulu!")
