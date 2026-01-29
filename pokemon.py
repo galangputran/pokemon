@@ -1,88 +1,82 @@
-Python 3.11.4 (tags/v3.11.4:d2340ef, Jun  7 2023, 05:45:37) [MSC v.1934 64 bit (AMD64)] on win32
-Type "help", "copyright", "credits" or "license()" for more information.
 import streamlit as st
+import requests
 import pandas as pd
 
-# Setup Page Config untuk tampilan ala Gen Z
-st.set_page_config(page_title="PokeRun: What's Your Runner Type?", page_icon="🏃‍♂️", layout="centered")
+# GANTI DENGAN PUNYAMU DARI STRAVA SETTINGS
+CLIENT_ID = '198781'
+CLIENT_SECRET = 'b1c82f5d0e9d964496766a89c98292b5a2ae5a91'
+REDIRECT_URI = 'http://localhost:8501/'
 
-# Custom CSS untuk tampilan lebih "Clean & Bold"
+st.set_page_config(page_title="PokeRun Analyzer", page_icon="⚡")
+
+# --- CSS Estetik Gen Z ---
 st.markdown("""
     <style>
-    .main {
-        background-color: #f0f2f6;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 20px;
-        background-color: #FF4B4B;
-        color: white;
-        font-weight: bold;
-    }
-    .pokemon-card {
-        padding: 20px;
-        border-radius: 15px;
-        background: white;
-        box-shadow: 10px 10px 0px #000000;
-        border: 2px solid #000;
-        text-align: center;
-    }
+    .main { background-color: #f8f9fa; }
+    .stButton>button { border-radius: 50px; background: linear-gradient(45deg, #FF4B4B, #FF9068); color: white; border: none; padding: 10px 24px; font-weight: bold; transition: 0.3s; }
+    .stButton>button:hover { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .card { padding: 30px; border-radius: 25px; background: white; border: 4px solid #000; box-shadow: 12px 12px 0px #000; margin: 20px 0; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- Header Section ---
-st.title("⚡ PokeRun Analyzer")
-st.subheader("Are you a Swift Rapidash or a Chill Slowpoke?")
-st.write("Connect your Strava and let's see your inner Pokemon spirit!")
+st.title("🏃‍♂️ PokeRun")
+st.write("### Connect your Strava, find your inner Pokemon!")
 
-# --- Logic Klasifikasi ---
-def classify_runner(avg_pace, frequency):
-    # Logika sederhana: pace dalam menit/km
-    if avg_pace < 5.0:
-        return {
-            "name": "Rapidash",
-            "desc": "Gila! Kamu kenceng banget. Aspal sampe kebakar kalo kamu lewat. Definisi 'Fast & Furious' di dunia nyata!",
-            "vibe": "Elite Runner Energy 🦄🔥"
-        }
-    elif 5.0 <= avg_pace < 7.0:
-        if frequency > 3:
-            return {
-                "name": "Pikachu",
-                "desc": "Energik dan konsisten! Kamu rajin banget lari dan selalu ceria di setiap kilometer. Main Character Energy!",
-                "vibe": "Social Runner / High Spirits ⚡️"
-...             }
-...         else:
-...             return {
-...                 "name": "Bulbasaur",
-...                 "desc": "Stabil dan chill. Kamu lari buat kesehatan mental dan enjoy the view. Humble tapi pasti.",
-...                 "vibe": "Consistent & Balanced 🌱"
-...             }
-...     else:
-...         return {
-...             "name": "Slowpoke",
-...             "desc": "Pace bukan segalanya, yang penting gerak! Kamu tipe yang lari sambil mikirin mau makan apa abis ini. Relatable banget.",
-...             "vibe": "Chill & Relaxed 🌸"
-...         }
-... 
-... # --- Mock UI untuk Demo ---
-... # (Di versi asli, ini akan dihubungkan dengan OAuth Strava)
-... with st.expander("🔗 Connect to Strava"):
-...     st.info("Input data manual untuk preview (Fitur API sedang dalam pengembangan)")
-...     pace_input = st.slider("Average Pace (min/km)", 3.0, 12.0, 6.5)
-...     freq_input = st.number_input("Runs per week", 1, 7, 3)
-... 
-... if st.button("REVEAL MY POKEMON"):
-...     result = classify_runner(pace_input, freq_input)
-...     
-...     st.markdown(f"""
-...         <div class="pokemon-card">
-...             <h1 style='color: #FF4B4B;'>You are {result['name']}!</h1>
-...             <p style='font-size: 1.2em; font-weight: bold;'>{result['vibe']}</p>
-...             <p>{result['desc']}</p>
-...         </div>
-...     """, unsafe_allow_html=True)
-...     
-...     st.balloons()
-... 
-... # --- Footer ---
-... st.markdown("---")
+# --- AUTH LOGIC ---
+query_params = st.query_params
+
+if "code" not in query_params:
+    # Tombol Login
+    auth_url = f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}&approval_prompt=auto&scope=activity:read_all"
+    st.markdown(f'<a href="{auth_url}" target="_self"><button style="width:100%; cursor:pointer; padding:15px; border-radius:15px; background-color:#FC4C02; color:white; border:none; font-weight:bold;">🔥 LOGIN WITH STRAVA</button></a>', unsafe_allow_html=True)
+else:
+    # Ambil Data Setelah Login Berhasil
+    code = query_params["code"]
+    
+    # Tukar Code dengan Access Token
+    token_response = requests.post("https://www.strava.com/oauth/token", data={
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'code': code,
+        'grant_type': 'authorization_code'
+    }).json()
+
+    access_token = token_response.get('access_token')
+
+    if access_token:
+        # Ambil Aktivitas Lari Terakhir
+        activities = requests.get(
+            "https://www.strava.com/api/v3/athlete/activities",
+            headers={'Authorization': f'Bearer {access_token}'},
+            params={'per_page': 5}
+        ).json()
+
+        if activities:
+            # Ambil rata-rata pace dari lari terakhir (m/s ke min/km)
+            last_run = activities[0]
+            avg_speed = last_run['average_speed'] # m/s
+            pace_min_km = (1000 / avg_speed) / 60 if avg_speed > 0 else 0
+            
+            # --- Klasifikasi ---
+            if pace_min_km < 5.0:
+                pkmn, color, emoji = "Rapidash", "#FF4B4B", "🔥"
+                desc = "Lari kamu kenceng banget! Kayak Rapidash yang kakinya api semua. Aura kompetitif kamu kerasa sampe sini, no cap!"
+            elif pace_min_km < 7.5:
+                pkmn, color, emoji = "Pikachu", "#FDE047", "⚡"
+                desc = "Energik parah! Kamu lari dengan penuh keceriaan. Konsisten dan selalu jadi penyemangat buat pelari lain!"
+            else:
+                pkmn, color, emoji = "Slowpoke", "#FDA4AF", "🌸"
+                desc = "Chill abis. Kamu lari buat nikmatin vibes, bukan buat dikejar target. Yang penting gerak dan tetep slay!"
+
+            st.markdown(f"""
+                <div class="card">
+                    <h2 style='color:{color};'>You are {pkmn}! {emoji}</h2>
+                    <hr>
+                    <p style='font-size:1.1em;'><b>Recent Pace:</b> {pace_min_km:.2f} min/km</p>
+                    <p style='font-style: italic;'>"{desc}"</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.confetti()
+        else:
+            st.warning("Belum ada data lari di akun Strava kamu nih. Yuk lari dulu!")
